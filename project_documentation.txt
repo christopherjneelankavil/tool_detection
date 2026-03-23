@@ -1,0 +1,243 @@
+================================================================
+        TOOL DETECTION USING YOLOv8
+        Project Documentation
+================================================================
+Author      : Christopher J Neelankavil
+GitHub      : https://github.com/christopherjneelankavil/tool_detection
+Date        : March 2026
+================================================================
+
+
+----------------------------------------------------------------
+1. PROJECT IDEA
+----------------------------------------------------------------
+
+The goal of this project is to build a real-time computer vision
+system that can automatically detect and identify common workshop
+tools from a live webcam feed or image input.
+
+In a real-world workshop or industrial setting, tools are often
+scattered around and identifying them quickly can save time and
+improve workflow efficiency. This project aims to solve that by
+using deep learning-based object detection to identify tools
+instantly and accurately.
+
+Tools targeted for detection:
+  - Hammer
+  - Wrench
+  - Plier
+  - Socket
+  - Bit
+
+
+----------------------------------------------------------------
+2. PROBLEM STATEMENT
+----------------------------------------------------------------
+
+Manual identification of tools in a cluttered workshop environment
+is time-consuming. There is a need for an automated, real-time
+system that can:
+
+  - Detect multiple tools simultaneously in a single frame
+  - Draw bounding boxes around each detected tool
+  - Display the tool name and confidence score
+  - Run efficiently on standard hardware (CPU)
+
+
+----------------------------------------------------------------
+3. APPROACH
+----------------------------------------------------------------
+
+The project follows a supervised deep learning approach using
+object detection. Rather than building a model from scratch,
+we used transfer learning on a pretrained YOLOv8 model and
+fine-tuned it on a custom tool detection dataset.
+
+This approach was chosen because:
+
+  - Transfer learning requires far less data and training time
+  - YOLOv8 is optimized for real-time inference
+  - The pretrained weights already understand low-level visual
+    features like edges, shapes, and textures
+  - Fine-tuning adapts those features specifically to tools
+
+
+----------------------------------------------------------------
+4. METHODOLOGY
+----------------------------------------------------------------
+
+STEP 1 — DATASET SELECTION
+  - Source     : Roboflow Universe (Public Dataset)
+  - Dataset    : Tools Object Detection Dataset by "hammer"
+  - URL        : https://universe.roboflow.com/hammer-dqemv/tools-vl4du
+  - License    : CC BY 4.0
+  - Images     : 2,787 total
+                   - Train : 2,507 images
+                   - Valid : 177 images
+                   - Test  : 103 images
+  - Classes    : 5 (Hammer, Wrench, Plier, Socket, Bit)
+  - Format     : YOLOv8 (images + label .txt files)
+
+STEP 2 — DATA PREPARATION
+  - Dataset downloaded via Roboflow Python SDK
+  - data.yaml paths updated to absolute paths for Colab
+    compatibility
+  - Labels verified: 0 corrupt images, 0 background images
+  - Automatic augmentations applied by Ultralytics:
+      Blur, MedianBlur, CLAHE, Grayscale conversion
+
+STEP 3 — MODEL SELECTION
+  - Architecture : YOLOv8n (Nano variant)
+  - Pretrained   : Yes (COCO dataset — 80 classes)
+  - Parameters   : 3,011,823
+  - GFLOPs       : 8.2
+  - Reason for nano: Fast inference, low resource usage,
+    suitable for CPU deployment
+
+STEP 4 — TRAINING CONFIGURATION
+  - Platform    : Google Colab (Tesla T4 GPU, 14GB VRAM)
+  - Framework   : Ultralytics YOLOv8 v8.4.24
+  - Epochs      : 50 (early stopping triggered at epoch 17)
+  - Image Size  : 640 x 640
+  - Batch Size  : 16
+  - Optimizer   : AdamW (auto-selected)
+  - LR          : 0.001111
+  - Patience    : 10 epochs (early stopping)
+  - AMP         : Enabled (Automatic Mixed Precision)
+  - Workers     : 2 dataloader workers
+
+STEP 5 — TRAINING RESULTS
+  - Best Epoch  : 7
+  - mAP@50      : 0.730  (73% accuracy at IoU threshold 0.5)
+  - mAP@50-95   : 0.421  (42% across strict IoU thresholds)
+  - Training stopped at epoch 17 due to no improvement for
+    10 consecutive epochs (early stopping)
+  - Losses consistently decreased:
+      cls_loss : 2.135 → 0.521 (74% reduction)
+      box_loss : 0.850 → 0.711 (16% reduction)
+
+STEP 6 — EVALUATION & INFERENCE TESTING
+  - Model tested on 3 validation images
+  - All tools correctly identified with 0 false detections
+  - Sample confidence scores:
+      Plier  : 89%
+      Wrench : 87%
+      Hammer : 63–72%
+  - Inference speed : 12–24ms per image on GPU
+                      ~50–100ms per image on CPU
+
+STEP 7 — MODEL EXPORT
+  - PyTorch (.pt)          : 5.9 MB  — Primary model
+  - ONNX (.onnx)           : 11.7 MB — Cross-platform
+  - TFLite (.tflite)       : 11.7 MB — Mobile / Edge devices
+  - TensorFlow SavedModel  : 29.5 MB — TF ecosystem
+
+STEP 8 — DEPLOYMENT
+  - Deployed as a real-time webcam desktop application
+  - Platform    : Ubuntu Linux (CPU only)
+  - Language    : Python 3.x
+  - Libraries   : Ultralytics, OpenCV
+  - Device      : CPU (Intel Core, no GPU required)
+  - Input       : Live webcam feed (640x480)
+  - Output      : Annotated frame with bounding boxes,
+                  labels, and confidence scores
+  - FPS         : 10–20 FPS on modern CPU
+
+
+----------------------------------------------------------------
+5. TECHNOLOGY STACK
+----------------------------------------------------------------
+
+  Component           Technology
+  ------------------  ----------------------------------
+  Model Architecture  YOLOv8n (Ultralytics)
+  Training Platform   Google Colab (T4 GPU)
+  Deep Learning       PyTorch 2.10
+  Computer Vision     OpenCV 4.x
+  Dataset Management  Roboflow SDK
+  Language            Python 3.12
+  Environment         Python venv (Ubuntu)
+  Version Control     Git + GitHub
+
+
+----------------------------------------------------------------
+6. KEY DESIGN DECISIONS
+----------------------------------------------------------------
+
+WHY YOLO over plain CNN?
+  A plain CNN can only classify what is in an image. YOLO
+  performs detection — finding WHERE each tool is and drawing
+  bounding boxes. This is essential for real-world applications
+  where multiple tools appear in the same frame.
+
+WHY YOLOv8n (Nano)?
+  The nano variant was chosen for its small size (5.9MB) and
+  fast inference speed, making it suitable for CPU deployment
+  on standard laptops without requiring a dedicated GPU.
+
+WHY Transfer Learning?
+  Training from scratch would require hundreds of thousands of
+  images. By starting from COCO-pretrained weights, the model
+  already understands visual features and only needs to learn
+  what tools look like — requiring far less data and time.
+
+WHY Roboflow Dataset?
+  The dataset provided 2,787 annotated images with bounding
+  boxes already drawn — eliminating the need for manual
+  annotation which is the most time-consuming part of any
+  computer vision project.
+
+WHY Early Stopping?
+  Early stopping with patience=10 prevented overfitting by
+  halting training when the model stopped improving, saving
+  compute time and preserving the best weights automatically.
+
+
+----------------------------------------------------------------
+7. CHALLENGES FACED
+----------------------------------------------------------------
+
+  1. data.yaml path errors in Colab
+     → Fixed by overwriting paths with absolute directories
+
+  2. Training loss oscillation (unstable mAP)
+     → Caused by high learning rate in early epochs
+     → Warmup phase stabilized after epoch 3
+
+  3. git add hanging due to venv folder
+     → Fixed by creating .gitignore before staging files
+
+  4. git config duplicate values
+     → Fixed using --replace-all flag
+
+
+----------------------------------------------------------------
+8. FUTURE IMPROVEMENTS
+----------------------------------------------------------------
+
+  - Retrain with YOLOv8s (small) for better accuracy
+  - Add more tool classes: screwdriver, tape measure, level
+  - Lower learning rate (lr0=0.001) for stable training
+  - Build Android mobile app using TFLite model
+  - Add tool counting and inventory tracking feature
+  - Deploy as a web API using FastAPI
+
+
+----------------------------------------------------------------
+9. CONCLUSION
+----------------------------------------------------------------
+
+This project successfully demonstrates the use of transfer
+learning with YOLOv8 to build a real-time tool detection system.
+The model achieved 73% mAP@50 accuracy after just 17 epochs of
+training on a dataset of 2,787 images and runs in real-time on
+a standard CPU-only machine.
+
+The combination of Roboflow for dataset management, Google Colab
+for GPU-accelerated training, and Ultralytics for the YOLOv8
+framework made the entire pipeline fast, reproducible, and easy
+to deploy.
+
+================================================================
+END OF DOCUMENT
+================================================================
