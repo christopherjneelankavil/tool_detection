@@ -1,5 +1,10 @@
 import cv2
 from ultralytics import YOLO
+from http_sender import HTTPSender
+
+# Initialize HTTP Sender
+http_server = HTTPSender(port=8080)
+http_server.start()
 
 # Load model
 model = YOLO("best_medium.pt")
@@ -29,11 +34,19 @@ while True:
     # Fix 2: lower conf to 0.3
     results = model(frame, conf=0.3, imgsz=640, device='cpu', verbose=False)
 
+    frame_data = {"detections": []}
+
     for box in results[0].boxes:
         cls_id = int(box.cls)
         label  = model.names[cls_id]
         conf   = float(box.conf)
         x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+        frame_data["detections"].append({
+            "class": label,
+            "confidence": round(conf, 2),
+            "bbox": [x1, y1, x2, y2]
+        })
 
         color = COLORS.get(label, (255, 255, 255))
 
@@ -46,6 +59,11 @@ while True:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
     count = len(results[0].boxes)
+    if frame_data["detections"]:
+        http_server.send_data(frame_data)
+    else:
+        http_server.send_data({"detections": []})
+
     cv2.putText(frame, f"Tools: {count}", (10, 30),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
     cv2.putText(frame, "YOLOv8m | CPU", (10, 60),
@@ -58,3 +76,4 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+http_server.close()
